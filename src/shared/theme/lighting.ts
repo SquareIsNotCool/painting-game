@@ -1,6 +1,6 @@
 import { TweenService, Lighting } from "@rbxts/services";
 import { FlavorInfo } from "./catppuccin";
-import { EASE_DURATION, EASE_FUNCTION, EASE_DIRECTION } from "./easing";
+import { TWEEN_INFO } from "./easing";
 import { flavorManager } from "./flavorManager";
 
 function setLightingColors(flavor: FlavorInfo, skipTween = false) {
@@ -11,7 +11,7 @@ function setLightingColors(flavor: FlavorInfo, skipTween = false) {
     }
     const tween = TweenService.Create(
         Lighting,
-        new TweenInfo(EASE_DURATION, EASE_FUNCTION, EASE_DIRECTION),
+        TWEEN_INFO,
         {
             // FogColor: flavor.colors.Crust,
             ClockTime: clockTime

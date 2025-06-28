@@ -1,14 +1,14 @@
 import { CollectionService, TweenService, Workspace } from "@rbxts/services";
 import { $print } from "rbxts-transform-debug";
-import { Label, labels } from "shared/theme/catppuccin";
+import { flavors, Label, labels, LabelWithInverse, palettes } from "shared/theme/catppuccin";
 import { flavorManager } from "./flavorManager";
-import { EASE_DIRECTION, EASE_DURATION, EASE_FUNCTION } from "./easing";
+import { TWEEN_INFO } from "./easing";
 
 const THEMED_PART_TAG = "FlavoredPart";
 const COLOR_ROLE_ATTRIBUTE = "ColorLabel";
 
 interface PartInformation {
-    color: Label,
+    color: LabelWithInverse,
     listeners: RBXScriptConnection[]
 }
 
@@ -16,6 +16,36 @@ type Colorable = BasePart;
 
 const registeredParts: Map<Colorable, PartInformation> = new Map();
 
+function unregisterPart(part: Colorable) {
+    const entry = registeredParts.get(part);
+    if (!entry) return;
+    entry.listeners.forEach(listener => listener.Disconnect());
+    entry.listeners.clear();
+    registeredParts.delete(part);
+}
+function registerPart(part: Colorable) {
+    const role = part.GetAttribute(COLOR_ROLE_ATTRIBUTE) as LabelWithInverse | undefined;
+    if (!role) return;
+
+    const color = flavorManager.getColor(role);
+    part.Color = color;
+    registeredParts.set(part, {
+        color: role,
+        listeners: [
+            part.GetAttributeChangedSignal(COLOR_ROLE_ATTRIBUTE).Connect(() => {
+                const role = part.GetAttribute(COLOR_ROLE_ATTRIBUTE) as Label | undefined;
+                if (!role) {
+                    unregisterPart(part);
+                    return;
+                }
+                const entry = registeredParts.get(part);
+                if (!entry) return;
+                entry.color = role;
+                part.Color = flavorManager.getColor(role);
+            })
+        ]
+    });
+}
 $print("Registering parts...");
 for (const part of CollectionService.GetTagged(THEMED_PART_TAG)) {
     if (!part.IsA("BasePart")) continue;
@@ -34,58 +64,27 @@ CollectionService.GetInstanceRemovedSignal(THEMED_PART_TAG).Connect(part => {
 })
 $print("Ready!");
 
-flavorManager.changed.Connect(flavor => {
-    for (const [part, info] of registeredParts) {
-        if (!part.IsDescendantOf(game)) {
-            unregisterPart(part);
-            continue;
-        }
-        setPartColorTween(part, flavor.colors[info.color]);
-    }
-})
-
-function registerPart(part: Colorable) {
-    const role = part.GetAttribute(COLOR_ROLE_ATTRIBUTE) as Label | undefined;
-    if (!role) return;
-
-    const color = flavorManager.getFlavor().colors[role];
-    part.Color = color;
-    registeredParts.set(part, {
-        color: role,
-        listeners: [
-            part.GetAttributeChangedSignal(COLOR_ROLE_ATTRIBUTE).Connect(() => {
-                const role = part.GetAttribute(COLOR_ROLE_ATTRIBUTE) as Label | undefined;
-                if (!role) {
-                    unregisterPart(part);
-                    return;
-                }
-                const entry = registeredParts.get(part);
-                if (!entry) return;
-                entry.color = role;
-                part.Color = flavorManager.getFlavor().colors[role];
-            })
-        ]
-    });
-}
-function unregisterPart(part: Colorable) {
-    const entry = registeredParts.get(part);
-    if (!entry) return;
-    entry.listeners.forEach(listener => listener.Disconnect());
-    entry.listeners.clear();
-    registeredParts.delete(part);
-}
 function setPartColorTween(part: Colorable, newColor: Color3) {
     const tween = TweenService.Create(
         part,
-        new TweenInfo(EASE_DURATION, EASE_FUNCTION, EASE_DIRECTION),
+        TWEEN_INFO,
         {
             Color: newColor
         }
     );
     tween.Play();
 }
+flavorManager.changed.Connect(flavor => {
+    for (const [part, info] of registeredParts) {
+        if (!part.IsDescendantOf(game)) {
+            unregisterPart(part);
+            continue;
+        }
+        setPartColorTween(part, flavorManager.getColor(info.color));
+    }
+})
 
-export function setPartColor(part: Colorable, color: Label | undefined) {
+export function setPartColor(part: Colorable, color: LabelWithInverse | undefined) {
     if (color) {
         part.AddTag(THEMED_PART_TAG);
     }
@@ -95,16 +94,19 @@ export function setPartColor(part: Colorable, color: Label | undefined) {
     part.SetAttribute(COLOR_ROLE_ATTRIBUTE, color);
 }
 
-export function spawnVisualPalette(center: Vector3, elementSize: Vector3 = new Vector3(5, 25, 5), direction: Vector3 = new Vector3(0, 0, 1)): Folder {
+export function spawnVisualPalette(inverse: boolean, center: Vector3, elementSize: Vector3 = new Vector3(5, 25, 5), direction: Vector3 = new Vector3(0, 0, 1)): Folder {
     const folder = new Instance("Folder");
     folder.Name = "DebugVisualPalette";
 
     const length = labels.size() * elementSize.Z;
     for (let i = 0; i < labels.size(); i += 1) {
-        const colorKey = labels[i];
+        let colorKey: LabelWithInverse = labels[i];
+        if (inverse) colorKey = `Inverse${colorKey}`;
 
         const part = new Instance("Part");
         part.Material = Enum.Material.Plastic;
+        part.TopSurface = Enum.SurfaceType.Smooth;
+        part.BottomSurface = Enum.SurfaceType.Smooth;
         part.Size = elementSize;
         part.Name = colorKey;
         part.Anchored = true;
@@ -121,5 +123,59 @@ export function spawnVisualPalette(center: Vector3, elementSize: Vector3 = new V
 
     folder.Parent = Workspace;
 
+    return folder;
+}
+
+export function spawnTestTriggers(center: Vector3, elementSize: Vector3, direction: Vector3, gap: number): Folder {
+    const folder = new Instance("Folder");
+    folder.Name = "DebugFlavorButtons";
+
+    const length = flavors.size() * (elementSize.Z * gap);
+    for (let i = 0; i < flavors.size(); i += 1) {
+        const flavor = flavors[i];
+        const flavorInfo = palettes[flavor];
+
+        const part = new Instance("Part");
+        part.Anchored = true;
+        part.Color = flavorInfo.colors.Surface0;
+        part.Size = elementSize;
+        part.Name = flavor;
+        part.Material = Enum.Material.Plastic;
+        part.TopSurface = Enum.SurfaceType.Smooth;
+        part.BottomSurface = Enum.SurfaceType.Smooth;
+
+        part.Position = center.add(new Vector3(
+            (i * (elementSize.X * gap) - (length / 2)) * direction.X,
+            (i * (elementSize.Y * gap) - (length / 2)) * direction.Y,
+            (i * (elementSize.Z * gap) - (length / 2)) * direction.Z,
+        )).add(new Vector3(
+            gap * direction.X,
+            gap * direction.Y,
+            gap * direction.Z
+        ));
+
+        const attachment = new Instance("Attachment");
+
+        const proxmityPrompt = new Instance("ProximityPrompt");
+        proxmityPrompt.ActionText = `${flavorInfo.emoji} ${flavorInfo.name}`;
+        proxmityPrompt.ObjectText = "Set Flavor";
+        proxmityPrompt.KeyboardKeyCode = Enum.KeyCode.E;
+        proxmityPrompt.GamepadKeyCode = Enum.KeyCode.ButtonX;
+        proxmityPrompt.Exclusivity = Enum.ProximityPromptExclusivity.OnePerButton;
+        proxmityPrompt.RequiresLineOfSight = true;
+        proxmityPrompt.ClickablePrompt = true;
+        proxmityPrompt.HoldDuration = 0;
+
+        proxmityPrompt.Triggered.Connect(player => {
+            flavorManager.setFlavor(flavor);
+        })
+
+        proxmityPrompt.Parent = attachment;
+        attachment.Parent = part;
+
+        part.Parent = folder;
+    }
+
+    folder.Parent = Workspace;
     return folder;
 }

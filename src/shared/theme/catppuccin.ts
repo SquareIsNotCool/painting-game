@@ -8,6 +8,8 @@ export type Flavor = "latte" | "frappe" | "macchiato" | "mocha";
 
 export interface FlavorInfo {
 	id: Flavor;
+    name: string;
+    emoji: string;
 	inverse: Flavor;
 	colors: Palette;
 	dark: boolean;
@@ -44,10 +46,13 @@ export interface Palette {
 }
 
 export type Label = keyof Palette;
+export type LabelWithInverse = Label | `Inverse${Label}`;
 
 export const palettes: Record<Flavor, FlavorInfo> = {
 	latte: {
 		id: "latte",
+        name: "Latte",
+        emoji: "🌻",
 		inverse: "mocha",
 		light: true,
 		dark: false,
@@ -82,6 +87,8 @@ export const palettes: Record<Flavor, FlavorInfo> = {
 	},
 	frappe: {
 		id: "frappe",
+        name: "Frappé",
+        emoji: "🪴",
 		inverse: "latte",
 		light: false,
 		dark: true,
@@ -116,6 +123,8 @@ export const palettes: Record<Flavor, FlavorInfo> = {
 	},
 	macchiato: {
 		id: "macchiato",
+        name: "Macchiato",
+        emoji: "🌺",
 		inverse: "latte",
 		light: false,
 		dark: true,
@@ -150,6 +159,8 @@ export const palettes: Record<Flavor, FlavorInfo> = {
 	},
 	mocha: {
 		id: "mocha",
+        name: "Mocha",
+        emoji: "🌿",
 		inverse: "latte",
 		light: false,
 		dark: true,
