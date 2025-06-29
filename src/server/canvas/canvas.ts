@@ -51,6 +51,10 @@ export class Canvas {
             }
         }
     }
+
+    public getPixels() {
+        return this.pixels as readonly CanvasElement[];
+    } 
 }
 
 const RESOLUTION_MULTIPLIER = 1;

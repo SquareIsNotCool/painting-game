@@ -19,8 +19,8 @@ export class CanvasElement {
     private currentBrush: Brush;
     private defaultBrush: Brush;
     public drying: boolean = false;
-    private finishedDryingEvent: BindableEvent<() => void>;
-    public dried: RBXScriptSignal<() => void>;
+    private finishedDryingEvent: BindableEvent<(brush: Brush) => void>;
+    public dried: RBXScriptSignal<(brush: Brush) => void>;
 
     private baseLayer: Part;
     private paintLayer: Part;
@@ -80,7 +80,7 @@ export class CanvasElement {
             this.drying = false;
             applyPaintToPart(this.baseLayer, this.currentBrush);
             this.hidePaintLayer();
-            if (state === Enum.PlaybackState.Completed) this.finishedDryingEvent.Fire();
+            if (state === Enum.PlaybackState.Completed) this.finishedDryingEvent.Fire(this.currentBrush);
         }))
         this.tweens.connections.push(this.tweens.transparencyTween.Completed.Connect((state) => {
             $print("TransparencyTween completed!");

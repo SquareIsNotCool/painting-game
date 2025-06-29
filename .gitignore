@@ -2,3 +2,6 @@
 /out
 /include
 *.tsbuildinfo
+
+/assets/generated
+*.blend[0-9]*
