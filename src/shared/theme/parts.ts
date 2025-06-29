@@ -1,4 +1,4 @@
-import { CollectionService, TweenService, Workspace } from "@rbxts/services";
+import { CollectionService, RunService, TweenService, Workspace } from "@rbxts/services";
 import { $print } from "rbxts-transform-debug";
 import { flavors, Label, labels, LabelWithInverse, palettes } from "shared/theme/catppuccin";
 import { flavorManager } from "./flavorManager";
@@ -6,19 +6,54 @@ import { TWEEN_INFO } from "./easing";
 
 const THEMED_PART_TAG = "FlavoredPart";
 const COLOR_ROLE_ATTRIBUTE = "ColorLabel";
+const CAN_EASE_ATTRIBUTE = "LabelChangeTransition";
 
 interface PartInformation {
     color: LabelWithInverse,
-    listeners: RBXScriptConnection[]
+    listeners: RBXScriptConnection[],
+    tween: Tween | undefined,
+    part: Colorable
 }
 
 type Colorable = BasePart;
 
 const registeredParts: Map<Colorable, PartInformation> = new Map();
 
+function setPartColorInstant(info: PartInformation, newColor: Color3) {
+    if (RunService.IsServer()) return;
+    info.part.Color = newColor;
+    info.tween?.Cancel();
+    info.tween = undefined;
+}
+function setPartColorTween(info: PartInformation, newColor: Color3) {
+    if (RunService.IsServer()) return;
+    const part = info.part;
+    const tween = TweenService.Create(
+        part,
+        TWEEN_INFO,
+        {
+            Color: newColor
+        }
+    );
+    info.tween?.Cancel();
+    info.tween = tween;
+    tween.Play();
+}
+function setPartColorWithEaseIfEnabled(info: PartInformation, newColor: Color3) {
+    const shouldTween = info.part.GetAttribute(CAN_EASE_ATTRIBUTE) === true;
+    if (shouldTween) {
+        setPartColorTween(info, newColor);
+    }
+    else {
+        setPartColorInstant(info, newColor);
+    }
+}
+
 function unregisterPart(part: Colorable) {
     const entry = registeredParts.get(part);
     if (!entry) return;
+    entry.tween?.Cancel();
+    entry.tween = undefined;
     entry.listeners.forEach(listener => listener.Disconnect());
     entry.listeners.clear();
     registeredParts.delete(part);
@@ -28,8 +63,7 @@ function registerPart(part: Colorable) {
     if (!role) return;
 
     const color = flavorManager.getColor(role);
-    part.Color = color;
-    registeredParts.set(part, {
+    const partInfo: PartInformation = {
         color: role,
         listeners: [
             part.GetAttributeChangedSignal(COLOR_ROLE_ATTRIBUTE).Connect(() => {
@@ -41,10 +75,15 @@ function registerPart(part: Colorable) {
                 const entry = registeredParts.get(part);
                 if (!entry) return;
                 entry.color = role;
-                part.Color = flavorManager.getColor(role);
+                const color = flavorManager.getColor(role);
+                setPartColorWithEaseIfEnabled(entry, color);
             })
-        ]
-    });
+        ],
+        tween: undefined,
+        part
+    };
+    setPartColorWithEaseIfEnabled(partInfo, color);
+    registeredParts.set(part, partInfo);
 }
 $print("Registering parts...");
 for (const part of CollectionService.GetTagged(THEMED_PART_TAG)) {
@@ -59,39 +98,35 @@ CollectionService.GetInstanceAddedSignal(THEMED_PART_TAG).Connect(part => {
 
 CollectionService.GetInstanceRemovedSignal(THEMED_PART_TAG).Connect(part => {
     if (!part.IsA("BasePart")) return;
-    $print("Part removed!");
     unregisterPart(part);
 })
 $print("Ready!");
 
-function setPartColorTween(part: Colorable, newColor: Color3) {
-    const tween = TweenService.Create(
-        part,
-        TWEEN_INFO,
-        {
-            Color: newColor
-        }
-    );
-    tween.Play();
-}
-flavorManager.changed.Connect(flavor => {
+flavorManager.changed.Connect((flavor, skipTween) => {
     for (const [part, info] of registeredParts) {
         if (!part.IsDescendantOf(game)) {
             unregisterPart(part);
             continue;
         }
-        setPartColorTween(part, flavorManager.getColor(info.color));
+        const color = flavorManager.getColor(info.color);
+        if (skipTween) {
+            setPartColorInstant(info, color);
+        }
+        else {
+            setPartColorTween(info, color);
+        }
     }
 })
 
-export function setPartColor(part: Colorable, color: LabelWithInverse | undefined) {
-    if (color) {
+export function setPartFlavoredColor(part: Colorable, label: LabelWithInverse | undefined, tween = false) {
+    part.SetAttribute(CAN_EASE_ATTRIBUTE, tween);
+    if (label) {
         part.AddTag(THEMED_PART_TAG);
     }
     else {
         part.RemoveTag(THEMED_PART_TAG);
     }
-    part.SetAttribute(COLOR_ROLE_ATTRIBUTE, color);
+    part.SetAttribute(COLOR_ROLE_ATTRIBUTE, label);
 }
 
 export function spawnVisualPalette(inverse: boolean, center: Vector3, elementSize: Vector3 = new Vector3(5, 25, 5), direction: Vector3 = new Vector3(0, 0, 1)): Folder {
@@ -116,7 +151,7 @@ export function spawnVisualPalette(inverse: boolean, center: Vector3, elementSiz
             (i * elementSize.Z - (length / 2)) * direction.Z,
         ));
 
-        setPartColor(part, colorKey);
+        setPartFlavoredColor(part, colorKey);
 
         part.Parent = folder;
     }
@@ -126,7 +161,7 @@ export function spawnVisualPalette(inverse: boolean, center: Vector3, elementSiz
     return folder;
 }
 
-export function spawnTestTriggers(center: Vector3, elementSize: Vector3, direction: Vector3, gap: number): Folder {
+export function spawnTestFlavorTriggers(center: Vector3, elementSize: Vector3, direction: Vector3, gap: number): Folder {
     const folder = new Instance("Folder");
     folder.Name = "DebugFlavorButtons";
 

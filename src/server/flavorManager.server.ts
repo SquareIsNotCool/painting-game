@@ -7,5 +7,5 @@ remotes.setFlavor.connect((player, flavor) => {
 });
 
 playerJoin.Connect((player, data) => {
-    remotes.updateFlavor.fire(player, data.selectedFlavor);
+    remotes.updateFlavor.fire(player, data.selectedFlavor, true);
 })

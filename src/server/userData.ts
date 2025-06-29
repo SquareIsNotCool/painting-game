@@ -1,5 +1,6 @@
 import { DataStoreService, Players } from "@rbxts/services";
-import { $warn } from "rbxts-transform-debug";
+import { $dbg, $print, $warn } from "rbxts-transform-debug";
+import { Brush, BrushId } from "shared/brushes";
 import { Flavor } from "shared/theme/catppuccin";
 
 const store = DataStoreService.GetDataStore("UserData");
@@ -9,14 +10,42 @@ export const playerJoin = handlePlayerJoin.Event;
 
 type UserId = number;
 interface UserData {
-    selectedFlavor: Flavor
+    selectedFlavor: Flavor,
+    selectedBrush: BrushId
 }
 
 const userData: Record<UserId, UserData> = {};
 
 const defaultData = () => ({
-    selectedFlavor: "frappe"
-} satisfies UserData)
+    selectedFlavor: "frappe",
+    selectedBrush: "red"
+} satisfies UserData) as UserData;
+
+function repairUserData<T extends object>(data: T, reference: T) {
+    $dbg(data);
+    $dbg(reference);
+    const keys = new Set<keyof T>();
+    for (const [k, v] of pairs(data as Record<string, unknown>)) {
+        keys.add(k as keyof T);
+    }
+    for (const [k, v] of pairs(reference as Record<string, unknown>)) {
+        keys.add(k as keyof T);
+    }
+    for (const key of keys) {
+        if (key in data && !(key in reference)) {
+            $print(`Deleting entry from userdata with key "${key as string}"`)
+            delete data[key];
+        }
+        else if (!(key in data) && key in reference) {
+            $print(`Copying entry from reference with key "${key as string}"`)
+            data[key] = reference[key];
+        }
+        else if (typeIs(data[key], "table")) {
+            $print(`Cleaning sub-table with key "${key as string}"`);
+            repairUserData(data[key], reference[key] as object);
+        }
+    }
+}
 
 const getKey = (player: Player) => `${player.UserId}`;
 async function getData(player: Player): Promise<UserData | undefined> {
@@ -28,7 +57,8 @@ async function getData(player: Player): Promise<UserData | undefined> {
                 reject(error);
             }
         })
-    })
+    });
+
 }
 async function setData(player: Player, data: UserData): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -43,7 +73,11 @@ async function setData(player: Player, data: UserData): Promise<string> {
 }
 
 Players.PlayerAdded.Connect(async player => {
-    const data = (await getData(player)) ?? defaultData();
+    const serverData = await getData(player);
+    if (serverData) repairUserData(serverData, defaultData());
+    
+    const data = serverData ?? defaultData();
+    $print(data);
     userData[player.UserId] = data;
     handlePlayerJoin.Fire(player, data);
 })

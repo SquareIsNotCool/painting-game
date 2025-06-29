@@ -11,5 +11,4 @@
 	},
 	"eslint.run": "onType",
     "eslint.format.enable": true,
-    "figura.librariesFolderPath": "C:\\Users\\rasmu\\AppData\\Roaming\\.minecraft\\figura\\avatars\\libraries\\",
 }

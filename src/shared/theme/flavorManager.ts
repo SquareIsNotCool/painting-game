@@ -6,7 +6,7 @@ import { Flavor, getFlavor, FlavorInfo, flavors, getInverse, LabelWithInverse, L
 class FlavorManager {
     private currentFlavor: FlavorInfo;
     private inverseFlavor: FlavorInfo;
-    private changedEvent: BindableEvent<(flavor: FlavorInfo) => void> = new Instance("BindableEvent");
+    private changedEvent: BindableEvent<(flavor: FlavorInfo, skipTween: boolean) => void> = new Instance("BindableEvent");
     public changed = this.changedEvent.Event;
 
     constructor(defaultFlavor: Flavor) {
@@ -15,11 +15,11 @@ class FlavorManager {
         this.inverseFlavor = getInverse(this.currentFlavor.id);
     }
 
-    public setFlavor(id: Flavor) {
+    public setFlavor(id: Flavor, skipTween = false) {
         if (id === this.currentFlavor.id) return;
         this.currentFlavor = getFlavor(id);
         this.inverseFlavor = getInverse(this.currentFlavor.id);
-        this.changedEvent.Fire(this.currentFlavor);
+        this.changedEvent.Fire(this.currentFlavor, skipTween);
     }
     public getFlavor(): FlavorInfo {
         return this.currentFlavor;
@@ -38,6 +38,6 @@ class FlavorManager {
 export const flavorManager = new FlavorManager("frappe");
 
 export const remotes = createRemotes({
-    updateFlavor: remote<Client, [flavor: Flavor]>(t.valueOf(flavors)),
+    updateFlavor: remote<Client, [flavor: Flavor, skipTween: boolean]>(t.valueOf(flavors), t.boolean),
     setFlavor: remote<Server, [flavor: Flavor]>(t.valueOf(flavors))
-}, loggerMiddleware);
+});

@@ -1,17 +1,17 @@
 import { TweenService, Lighting } from "@rbxts/services";
 import { FlavorInfo } from "./catppuccin";
-import { TWEEN_INFO } from "./easing";
+import { TWEEN_INFO_LIGHTING } from "./easing";
 import { flavorManager } from "./flavorManager";
 
 function setLightingColors(flavor: FlavorInfo, skipTween = false) {
-    const clockTime = flavor.light ? 7.4 : 0;
+    const clockTime = flavor.light ? 7.4 : 12;
     if (skipTween) {
         Lighting.ClockTime = clockTime;
         return;
     }
     const tween = TweenService.Create(
         Lighting,
-        TWEEN_INFO,
+        TWEEN_INFO_LIGHTING,
         {
             // FogColor: flavor.colors.Crust,
             ClockTime: clockTime
@@ -20,7 +20,7 @@ function setLightingColors(flavor: FlavorInfo, skipTween = false) {
     tween.Play();
 }
 
-flavorManager.changed.Connect(flavor => {
-    setLightingColors(flavor);
+flavorManager.changed.Connect((flavor, skipTween) => {
+    setLightingColors(flavor, skipTween);
 })
 setLightingColors(flavorManager.getFlavor(), true);
