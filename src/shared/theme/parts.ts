@@ -214,3 +214,8 @@ export function spawnTestFlavorTriggers(center: Vector3, elementSize: Vector3, d
     folder.Parent = Workspace;
     return folder;
 }
+
+export function getPartLabel(part: BasePart): LabelWithInverse | undefined {
+    if (!part.HasTag(THEMED_PART_TAG)) return undefined;
+    return part.GetAttribute(COLOR_ROLE_ATTRIBUTE) as LabelWithInverse;
+}

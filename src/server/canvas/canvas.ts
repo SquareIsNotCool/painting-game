@@ -2,7 +2,8 @@ import { getRightAndDownVectorsFromNormalAcrossPrimaryAxis } from "shared/utils/
 import { CanvasElement } from "./canvasElement";
 import { RunService, Workspace } from "@rbxts/services";
 import { $dbg } from "rbxts-transform-debug";
-import { brushes, remotes, selectableBrushes } from "../../shared/brushes";
+import { Brush, brushes, remotes, selectableBrushes } from "../../shared/brushes";
+import { testRemotes } from "shared/canvas";
 
 const random = new Random();
 export class Canvas {
@@ -46,7 +47,11 @@ export class Canvas {
 
     public heartbeat() {
         for (const pixel of this.pixels) {
+            if (pixel.getCurrentBrush().id === pixel.getDefaultBrush().id) continue;
             if (pixel.drying && random.NextNumber() < 0.01) {
+                pixel.spawnSplashes(random.NextInteger(1, 2));
+            }
+            else if (!pixel.drying && pixel.getCurrentBrush().id !== pixel.getDefaultBrush().id && random.NextNumber() < 0.0001) {
                 pixel.spawnSplashes(random.NextInteger(1, 2));
             }
         }
@@ -54,7 +59,16 @@ export class Canvas {
 
     public getPixels() {
         return this.pixels as readonly CanvasElement[];
-    } 
+    }
+
+    public paintEntireCanvas(brush: Brush, origin: Vector3) {
+        for (const pixel of this.pixels) {
+            task.spawn(() => {
+                task.wait(origin.sub(pixel.getPosition()).Magnitude / 48 - 0.333);
+                pixel.paint(brush, true);
+            })
+        }
+    }
 }
 
 const RESOLUTION_MULTIPLIER = 1;
@@ -68,4 +82,9 @@ export const canvas = new Canvas(
 
 RunService.Heartbeat.Connect(() => {
     canvas.heartbeat();
+})
+
+testRemotes.paintEntireCanvas.connect((player, brushId, origin) => {
+    const brush = brushes[brushId];
+    canvas.paintEntireCanvas(brush, origin);
 })

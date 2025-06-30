@@ -19,8 +19,8 @@ export class CanvasElement {
     private currentBrush: Brush;
     private defaultBrush: Brush;
     public drying: boolean = false;
-    private finishedDryingEvent: BindableEvent<(brush: Brush) => void>;
-    public dried: RBXScriptSignal<(brush: Brush) => void>;
+    private finishedDryingEvent: BindableEvent<(brush: Brush, defaultBrush: boolean) => void>;
+    public dried: RBXScriptSignal<(brush: Brush, defaultBrush: boolean) => void>;
 
     private baseLayer: Part;
     private paintLayer: Part;
@@ -32,6 +32,16 @@ export class CanvasElement {
     private paintFace: Vector3;
     private down: Vector3;
     private right: Vector3;
+
+    public getCurrentBrush() {
+        return this.currentBrush;
+    }
+    public getDefaultBrush() {
+        return this.defaultBrush;
+    }
+    public getPosition() {
+        return this.baseLayer.Position;
+    }
 
     private tweens = {
         sizeTween: undefined as unknown as Tween,
@@ -80,7 +90,7 @@ export class CanvasElement {
             this.drying = false;
             applyPaintToPart(this.baseLayer, this.currentBrush);
             this.hidePaintLayer();
-            if (state === Enum.PlaybackState.Completed) this.finishedDryingEvent.Fire(this.currentBrush);
+            if (state === Enum.PlaybackState.Completed) this.finishedDryingEvent.Fire(this.currentBrush, this.currentBrush.id === this.defaultBrush.id);
         }))
         this.tweens.connections.push(this.tweens.transparencyTween.Completed.Connect((state) => {
             $print("TransparencyTween completed!");
@@ -88,7 +98,8 @@ export class CanvasElement {
         }))
     }
 
-    paint(brush: Brush) {
+    paint(brush: Brush, force = false) {
+        if (this.drying && !force) return;
         $print("Painting!");
         this.drying = true;
 
@@ -107,7 +118,7 @@ export class CanvasElement {
         this.createTweens();
         this.tweens.sizeTween.Play();
         this.tweens.transparencyTween.Play();
-        this.spawnSplashes(random.NextInteger(3, 5));
+        if (brush.id !== this.defaultBrush.id) this.spawnSplashes(random.NextInteger(3, 5));
     }
     reset() {
         this.tweens.sizeTween.Cancel();

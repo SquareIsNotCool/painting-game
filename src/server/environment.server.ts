@@ -1,7 +1,7 @@
 import { RunService, Workspace } from "@rbxts/services";
 import { Label, LabelWithInverse } from "shared/theme/catppuccin";
-import { setPartFlavoredColor } from "shared/theme/parts";
-import { canvas } from "../canvas/canvas";
+import { getPartLabel, setPartFlavoredColor } from "shared/theme/parts";
+import { canvas } from "./canvas/canvas";
 import { applyPaintToPart } from "shared/canvas";
 import { createFolder } from "shared/utils/instance";
 import { fract } from "shared/utils/math";
@@ -166,8 +166,12 @@ for (const pixel of pixels) {
         random.Shuffle(parts);
         const part = parts.pop();
         if (!part) continue;
-        pixel.dried.Connect((brush) => {
-            applyPaintToPart(part, brush, true);
+        const defaultLabel = getPartLabel(part);
+        pixel.dried.Connect((brush, idDefaultBrush) => {
+            if (idDefaultBrush) {
+                setPartFlavoredColor(part, defaultLabel, true);
+            }
+            else applyPaintToPart(part, brush, true);
         })
     }
 }

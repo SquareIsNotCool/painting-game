@@ -116,7 +116,7 @@ export const selectableBrushes: BrushId[] = [
     "teal",
     "blue",
     "lavender",
-    // "blank"
+    "blank"
 ]
 
 export type BrushId = keyof typeof brushes;
