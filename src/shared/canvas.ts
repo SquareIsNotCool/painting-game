@@ -60,7 +60,7 @@ export function spawnTestBrushTriggers(center: Vector3, elementSize: Vector3, di
         setBrushPrompt.KeyboardKeyCode = Enum.KeyCode.E;
         setBrushPrompt.GamepadKeyCode = Enum.KeyCode.ButtonX;
         setBrushPrompt.Exclusivity = Enum.ProximityPromptExclusivity.OnePerButton;
-        setBrushPrompt.RequiresLineOfSight = true;
+        setBrushPrompt.RequiresLineOfSight = false;
         setBrushPrompt.ClickablePrompt = true;
         setBrushPrompt.HoldDuration = 0;
 
@@ -78,7 +78,7 @@ export function spawnTestBrushTriggers(center: Vector3, elementSize: Vector3, di
         fillCanvasPrompt.KeyboardKeyCode = Enum.KeyCode.F;
         fillCanvasPrompt.GamepadKeyCode = Enum.KeyCode.ButtonY;
         fillCanvasPrompt.Exclusivity = Enum.ProximityPromptExclusivity.OnePerButton;
-        fillCanvasPrompt.RequiresLineOfSight = true;
+        fillCanvasPrompt.RequiresLineOfSight = false;
         fillCanvasPrompt.ClickablePrompt = false;
         fillCanvasPrompt.HoldDuration = 2;
 
