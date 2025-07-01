@@ -4,7 +4,7 @@ import { TWEEN_INFO_LIGHTING } from "./easing";
 import { flavorManager } from "./flavorManager";
 
 function setLightingColors(flavor: FlavorInfo, skipTween = false) {
-    const clockTime = flavor.light ? 7.4 : 12;
+    const clockTime = flavor.light ? 8.2 : 12;
     if (skipTween) {
         Lighting.ClockTime = clockTime;
         return;

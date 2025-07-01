@@ -161,7 +161,7 @@ const parts = [
 
 const pixels = canvas.getPixels();
 for (const pixel of pixels) {
-    const count = random.NextInteger(0, 10);
+    const count = random.NextInteger(2, 12);
     for (let i = 0; i < count; i += 1) {
         random.Shuffle(parts);
         const part = parts.pop();

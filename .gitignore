@@ -4,4 +4,5 @@
 *.tsbuildinfo
 
 /assets/generated
+/assets/local
 *.blend[0-9]*
