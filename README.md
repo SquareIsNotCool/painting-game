@@ -7,4 +7,5 @@ I should warn you, though, that the code is an absolute mess since I have no clu
 
 ## Credits
 
-- Music by [Vylvet Pony](https://www.vyletpony.com/) is used in the game. Her stuff is absolutely incredible, and you should definitely check it out!
+- Music by [Vylet Pony](https://www.vyletpony.com/) is used in the game. Her stuff is absolutely incredible, and you should definitely check it out!
+- [Catppuccin](https://catppuccin.com/)'s beautiful color palettes are used in this project.
