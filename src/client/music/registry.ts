@@ -43,7 +43,7 @@ export const tracks: readonly Track[] = [
         name: "the child who dreamt it all",
         artists: ["Vylvet Pony"],
         album: "aura",
-        src: "rbxassetid://134940248668247"
+        src: "rbxassetid://100673635421879"
     },
     {
         name: "there",

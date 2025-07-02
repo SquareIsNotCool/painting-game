@@ -176,7 +176,7 @@ export class CanvasElement {
         this.right = right;
 
         const model = new Instance("Model");
-        model.Name = `CanvasPixel${id}`;
+        model.Name = "CanvasPixel";
 
         const baseLayer = new Instance("Part");
         baseLayer.Anchored = true;

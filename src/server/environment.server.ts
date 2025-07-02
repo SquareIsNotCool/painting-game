@@ -1,10 +1,13 @@
-import { RunService, Workspace } from "@rbxts/services";
+import { CollectionService, RunService, TweenService, Workspace } from "@rbxts/services";
 import { Label, LabelWithInverse } from "shared/theme/catppuccin";
-import { getPartLabel, setPartFlavoredColor } from "shared/theme/parts";
+import { CAN_EASE_ATTRIBUTE, COLOR_ROLE_ATTRIBUTE, getPartLabel, setPartFlavoredColor, THEMED_PART_TAG } from "shared/theme/parts";
 import { canvas } from "./canvas/canvas";
 import { applyPaintToPart } from "shared/canvas";
 import { createFolder } from "shared/utils/instance";
 import { fract } from "shared/utils/math";
+import { Brush, brushes } from "shared/brushes";
+import { CanvasElement } from "./canvas/canvasElement";
+import { $dbg } from "rbxts-transform-debug";
 
 const random = new Random();
 
@@ -96,7 +99,7 @@ interface FloatingCube {
 // [spin, orient, 0]
 const floatingCubes: FloatingCube[] = [];
 function scatterFloatingCubes(center: Vector3, outerDistance: number, minHeight: number, maxHeight: number, minSize: number, maxSize: number, count: number, labels: LabelWithInverse[], parent: Instance): Part[] {
-const parts: Part[] = [];
+    const parts: Part[] = [];
 
     for (let i = 0; i < count; i += 1) {
         const angle = math.rad(random.NextNumber() * 360);
@@ -147,17 +150,28 @@ const rootFolder = createFolder("Environment", Workspace);
 const outerRingFolder = createFolder("OuterRings", rootFolder);
 const innerCubesFolder = createFolder("InnerCubes", rootFolder);
 const floatingCubesFolder = createFolder("FloatingCubes", rootFolder);
-const parts = [
+const lavaLampElementsFolder = createFolder("LavaLampElements", rootFolder);
+const groundParts = [
     ...createOuterRing(new Vector3(0, 0, 0), 350, 35, "Base", outerRingFolder),
     ...createOuterRing(new Vector3(0, 0, 0), 500, 100, "Mantle", outerRingFolder),
     ...createOuterRing(new Vector3(0, 0, 0), 750, 250, "Crust", outerRingFolder),
     ...scatterCubesAroundInnerRegion(new Vector3(0, 0, 0), 250, 400, 200, 15, 35, ["Base", "Mantle"], innerCubesFolder),
     ...scatterCubesAroundInnerRegion(new Vector3(0, 0, 0), 150, 400, 200, 5, 25, ["Base", "Mantle"], innerCubesFolder),
     ...scatterCubesAroundInnerRegion(new Vector3(0, 0, 0), 100, 250, 50, 5, 10, ["Base"], innerCubesFolder),
+];
+const parts = [
+    ...groundParts,  
     ...scatterFloatingCubes(new Vector3(0, 0, 0), 1000, 150, 500, 25, 50, 50, ["Base", "Mantle", "Crust"], floatingCubesFolder),
     ...scatterFloatingCubes(new Vector3(0, 0, 0), 350, 75, 150, 35, 50, 5, ["Base", "Mantle", "Crust"], floatingCubesFolder),
     ...scatterFloatingCubes(new Vector3(0, 0, 0), 1000, 150, 1000, 5, 15, 100, ["Base", "Mantle"], floatingCubesFolder)
 ];
+
+function colorPart(part: Part, defaultLabel: LabelWithInverse | undefined, brush: Brush, isDefaultBrush: boolean, tween: boolean) {
+    if (isDefaultBrush) {
+        setPartFlavoredColor(part, defaultLabel, tween);
+    }
+    else applyPaintToPart(part, brush, tween);
+}
 
 const pixels = canvas.getPixels();
 for (const pixel of pixels) {
@@ -167,11 +181,8 @@ for (const pixel of pixels) {
         const part = parts.pop();
         if (!part) continue;
         const defaultLabel = getPartLabel(part);
-        pixel.dried.Connect((brush, idDefaultBrush) => {
-            if (idDefaultBrush) {
-                setPartFlavoredColor(part, defaultLabel, true);
-            }
-            else applyPaintToPart(part, brush, true);
+        pixel.dried.Connect((brush, isDefaultBrush) => {
+            colorPart(part, defaultLabel, brush, isDefaultBrush, true);
         })
     }
 }
@@ -189,5 +200,65 @@ RunService.Heartbeat.Connect(delta => {
         part.CFrame = cube.frame;
         part.Position = part.Position.add(new Vector3(0, math.sin(math.rad(cube.float * 360)) * floatLength));
         part.CFrame = part.CFrame.mul(CFrame.fromEulerAngles(math.rad(cube.spin * 360), cube.angle, 0, Enum.RotationOrder.YXZ));
+    }
+
+    if (random.NextNumber() < 0.0025) {
+        const lavaLampCount = random.NextInteger(1, 3);
+        const availableParts = [...groundParts];
+        for (let i = 0; i < lavaLampCount; i += 1) {
+            const index = random.NextInteger(0, availableParts.size() - 1);
+            const basePart = availableParts[index];
+            availableParts[index] = availableParts[availableParts.size() - 1];
+            availableParts.pop();
+
+            const size = basePart.Size.X / 100;
+    
+            const part = basePart.Clone();
+            part.Parent = lavaLampElementsFolder;
+
+            part.Size = new Vector3(basePart.Size.X, basePart.Size.X, basePart.Size.Z);
+            const heightDifference = basePart.Size.Y - part.Size.Y;
+            part.Position = basePart.Position.add(basePart.CFrame.UpVector.mul(heightDifference * 0.5));
+
+            const connections: RBXScriptConnection[] = [];
+    
+            connections.push(basePart.GetAttributeChangedSignal(CAN_EASE_ATTRIBUTE).Connect(() => {
+                part.SetAttribute(CAN_EASE_ATTRIBUTE, basePart.GetAttribute(CAN_EASE_ATTRIBUTE));
+            }))
+            connections.push(basePart.GetAttributeChangedSignal(COLOR_ROLE_ATTRIBUTE).Connect(() => {
+                part.SetAttribute(COLOR_ROLE_ATTRIBUTE, basePart.GetAttribute(COLOR_ROLE_ATTRIBUTE));
+            }))
+            connections.push(CollectionService.GetInstanceAddedSignal(THEMED_PART_TAG).Connect((instance) => {
+                if (instance !== basePart) return;
+                part.AddTag(THEMED_PART_TAG);
+            }))
+            connections.push(CollectionService.GetInstanceRemovedSignal(THEMED_PART_TAG).Connect((instance) => {
+                if (instance !== basePart) return;
+                part.RemoveTag(THEMED_PART_TAG);
+            }))
+    
+            const tweenDuration = math.lerp(40, 200, size);
+            const tween = TweenService.Create(
+                part,
+                new TweenInfo(tweenDuration, Enum.EasingStyle.Sine, Enum.EasingDirection.In),
+                {
+                    Position: part.Position.add(new Vector3(0, part.Size.X * 15, 0)),
+                    Size: new Vector3(0, 0, 0),
+                    Rotation: new Vector3(
+                        math.lerp(-720, 720, random.NextNumber()),
+                        math.lerp(-720, 720, random.NextNumber()),
+                        math.lerp(-720, 720, random.NextNumber()),
+                    )
+                }
+            );
+            tween.Play();
+            connections.push(tween.Completed.Connect(() => {
+                for (const connection of connections) {
+                    connection.Disconnect();
+                }
+                tween.Destroy();
+                part.Destroy();
+            }));
+        }
     }
 })

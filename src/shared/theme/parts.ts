@@ -4,9 +4,9 @@ import { flavors, Label, labels, LabelWithInverse, palettes } from "shared/theme
 import { flavorManager } from "./flavorManager";
 import { TWEEN_INFO } from "./easing";
 
-const THEMED_PART_TAG = "FlavoredPart";
-const COLOR_ROLE_ATTRIBUTE = "ColorLabel";
-const CAN_EASE_ATTRIBUTE = "LabelChangeTransition";
+export const THEMED_PART_TAG = "FlavoredPart";
+export const COLOR_ROLE_ATTRIBUTE = "ColorLabel";
+export const CAN_EASE_ATTRIBUTE = "LabelChangeTransition";
 
 interface PartInformation {
     color: LabelWithInverse,

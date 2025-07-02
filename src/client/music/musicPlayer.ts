@@ -67,5 +67,6 @@ export function getCurrentTrack() {
 
 task.spawn(() => {
     waitALittle(15, 60);
+    // task.wait(1);
     playNewTrack();
 })
