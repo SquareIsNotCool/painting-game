@@ -26,6 +26,7 @@
   "dependencies": {
     "@rbxts/remo": "^1.5.2",
     "@rbxts/roact": "^3.0.1",
+    "@rbxts/roact-hooks": "^0.5.1-ts.0",
     "@rbxts/services": "^1.5.5",
     "@rbxts/t": "^3.2.1",
     "rbxts-transform-debug": "github:roblox-aurora/rbxts-transform-debug",

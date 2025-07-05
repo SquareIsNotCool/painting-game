@@ -1,0 +1,1 @@
+export const BRUSH_DRYING_TIME = 30/5;

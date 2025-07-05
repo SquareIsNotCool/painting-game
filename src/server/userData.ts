@@ -11,14 +11,16 @@ export const playerJoin = handlePlayerJoin.Event;
 type UserId = number;
 interface UserData {
     selectedFlavor: Flavor,
-    selectedBrush: BrushId
+    selectedBrush: BrushId,
+    // unlockedBrushes: Set<BrushId>
 }
 
 const userData: Record<UserId, UserData> = {};
 
 const defaultData = () => ({
-    selectedFlavor: "frappe",
-    selectedBrush: "red"
+    selectedFlavor: "latte",
+    selectedBrush: "blue",
+    // unlockedBrushes: new Set(["blue"])
 } satisfies UserData) as UserData;
 
 function repairUserData<T extends object>(data: T, reference: T) {

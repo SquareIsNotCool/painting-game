@@ -16,15 +16,10 @@ export interface LoadedTrack {
 const sounds: LoadedTrack[] = tracks.map(track => {
     const sound = new Instance("Sound");
     sound.SoundId = track.src;
-    sound.Volume = 0.05;
+    sound.Volume = 0.2;
     sound.Name = `PreloadedTrack - ${track.name}`;
     sound.Parent = SoundService;
     sound.Looped = false;
-
-    sound.Ended.Connect(() => {
-        waitALittle(5, 60 * 2.5);
-        playNewTrack();
-    })
 
     return {
         instance: sound,
@@ -46,7 +41,7 @@ function waitALittle(min = 5, max = 45) {
 }
 
 let lastTrack: LoadedTrack = sounds[0];
-function playNewTrack() {
+function playNewTrack(): number {
     const tracks = sounds.filter(x => x.track.src !== lastTrack.track.src);
     const track = tracks[random.NextInteger(0, tracks.size() - 1)];
     const sound = track.instance;
@@ -59,6 +54,8 @@ function playNewTrack() {
     sound.Play();
 
     newTrackEvent.Fire(track);
+
+    return sound.TimeLength;
 }
 
 export function getCurrentTrack() {
@@ -66,7 +63,11 @@ export function getCurrentTrack() {
 }
 
 task.spawn(() => {
-    waitALittle(15, 60);
     // task.wait(1);
-    playNewTrack();
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+        waitALittle(15, 60);
+        const duration = playNewTrack();
+        task.wait(duration)
+    }
 })

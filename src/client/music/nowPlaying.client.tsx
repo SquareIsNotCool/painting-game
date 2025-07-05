@@ -8,13 +8,11 @@ import { getCurrentTrack, LoadedTrack, newTrack } from "./musicPlayer";
 import { pluralAnd } from "shared/utils/string";
 import { getIsUiDark, getUiColor, uiColorsChanged } from "shared/theme/ui";
 import { averageCanvasColorChanged, getAverageCanvasColor } from "client/canvasPixelColors";
-
-const tweenInfo = (dir: Enum.EasingDirection) => new TweenInfo(4.5, Enum.EasingStyle.Cubic, dir);
+import { Tweened } from "shared/tweened";
 
 class SongDisplay extends Component<object, { uiColorsChanged: boolean, trackInfo: LoadedTrack, transition: number }> {
     private connections!: RBXScriptConnection[];
-    private transitionValue!: NumberValue;
-    private tween: Tween | undefined;
+    private transition!: Tweened;
     private thread: thread | undefined;
 
     protected init() {
@@ -22,8 +20,10 @@ class SongDisplay extends Component<object, { uiColorsChanged: boolean, trackInf
     }
 
     protected didMount(): void {
-        this.transitionValue = new Instance("NumberValue");
-        this.transitionValue.Parent = Workspace;
+        this.transition = new Tweened(0, {
+            time: 4.5,
+            easingStyle: Enum.EasingStyle.Cubic
+        });
         this.connections = [
             uiColorsChanged.Connect(() => {
                 this.setState({ uiColorsChanged: true })
@@ -32,24 +32,17 @@ class SongDisplay extends Component<object, { uiColorsChanged: boolean, trackInf
                 this.setState({ uiColorsChanged: true })
             }),
             newTrack.Connect(track => {
-                this.transitionValue.Value = 0;
-                this.tween?.Cancel();
+                this.transition.setValue(0);
                 if (this.thread) task.cancel(this.thread);
                 this.setState({ trackInfo: track });
                 this.thread = task.spawn(() => {
-                    this.tween = TweenService.Create(this.transitionValue, tweenInfo(Enum.EasingDirection.Out), {
-                        Value: 1
-                    });
-                    this.tween.Play();
+                    this.transition.tween(1, { easingDirection: Enum.EasingDirection.Out });
                     task.wait(15);
-                    this.tween = TweenService.Create(this.transitionValue, tweenInfo(Enum.EasingDirection.In), {
-                        Value: 2
-                    });
-                    this.tween.Play();
+                    this.transition.tween(2, { easingDirection: Enum.EasingDirection.In });
                 })
             }),
-            this.transitionValue.GetPropertyChangedSignal("Value").Connect(() => {
-                this.setState({ transition: this.transitionValue.Value });
+            this.transition.valueChanged.Connect((value) => {
+                this.setState({ transition: value });
             })
         ];
     }
@@ -59,9 +52,7 @@ class SongDisplay extends Component<object, { uiColorsChanged: boolean, trackInf
             connection.Disconnect();
         }
         if (this.thread) task.cancel(this.thread);
-        this.tween?.Cancel();
-        this.tween?.Destroy();
-        this.transitionValue.Destroy();
+        this.transition.destroy();
     }
 
     private color(label: LabelWithInverse) {
@@ -161,7 +152,7 @@ class SongDisplay extends Component<object, { uiColorsChanged: boolean, trackInf
 }
 
 const frame = Roact.createRef<Frame>();
-const app = <screengui>
+const app = <screengui ResetOnSpawn={false}>
     <SongDisplay></SongDisplay>
 </screengui>;
 

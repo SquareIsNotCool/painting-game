@@ -1,11 +1,18 @@
 import { RunService, Workspace } from "@rbxts/services";
-import { Brush, brushes, BrushId, remotes, selectableBrushes } from "./brushes";
+import { Brush, brushes, BrushId, remotes as brushRemotes, selectableBrushes } from "./brushes";
 import { setPartFlavoredColor } from "./theme/parts";
-import { createRemotes, remote, Server } from "@rbxts/remo";
+import { Client, createRemotes, remote, Server } from "@rbxts/remo";
 import { t } from "@rbxts/t";
 
-export const testRemotes = createRemotes({
-    paintEntireCanvas: remote<Server, [brush: BrushId, origin: Vector3]>(t.keyOf(brushes), t.Vector3)
+export const COOLDOWN_ATTRIBUTE = "PaintCooldown";
+export const PIXEL_ID_ATTRIBUTE = "CanvasPixelIdent";
+
+export const CANVAS_TOP_LEFT = new Vector3(37.425, 27, -22.5);
+export const CANVAS_FORWARD = new Vector3(-1, 0, 0);
+
+export const remotes = createRemotes({
+    paintEntireCanvas: remote<Server, [brush: BrushId, origin: Vector3]>(t.keyOf(brushes), t.Vector3),
+    paintPixel: remote<Server, [pixelId: number]>(t.integer)
 });
 
 export function applyPaintToPart(part: BasePart, brush: Brush, tween = true) {
@@ -65,7 +72,7 @@ export function spawnTestBrushTriggers(center: Vector3, elementSize: Vector3, di
         setBrushPrompt.HoldDuration = 0;
 
         setBrushPrompt.Triggered.Connect(player => {
-            remotes.setBrush(brushId);
+            brushRemotes.setBrush(brushId);
         })
         setBrushPrompt.Parent = setBrushAttachment;
         setBrushAttachment.Parent = part;
@@ -84,7 +91,7 @@ export function spawnTestBrushTriggers(center: Vector3, elementSize: Vector3, di
 
         fillCanvasPrompt.Triggered.Connect(player => {
             if (RunService.IsClient()) {
-                testRemotes.paintEntireCanvas.fire(brushId, part.Position);
+                remotes.paintEntireCanvas.fire(brushId, part.Position);
             }
         })
         fillCanvasPrompt.Parent = fillCanvasAttachment;

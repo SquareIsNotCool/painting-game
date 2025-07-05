@@ -125,3 +125,13 @@ export const remotes = createRemotes({
     updateBrush: remote<Client, [brush: BrushId]>(t.valueOf(selectableBrushes)),
     setBrush: remote<Server, [brush: BrushId]>(t.valueOf(selectableBrushes))
 });
+
+export function getPlayerBrushId(player: Player): BrushId | undefined {
+    const brushId = player.GetAttribute(BRUSH_ID_ATTRIBUTE);
+    return brushId as BrushId;
+}
+export function getPlayerBrush(player: Player): Brush | undefined {
+    const brushId = getPlayerBrushId(player);
+    if (!brushId) return;
+    return brushes[brushId] as Brush;
+}

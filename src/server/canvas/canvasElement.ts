@@ -4,14 +4,13 @@ import { TweenService } from "@rbxts/services";
 import { $print } from "rbxts-transform-debug";
 import { getRightAndDownVectorsFromNormalAcrossPrimaryAxis } from "shared/utils/vector";
 import { getUserData } from "server/userData";
-import { applyPaintToPart } from "shared/canvas";
+import { applyPaintToPart, PIXEL_ID_ATTRIBUTE } from "shared/canvas";
 import type { Canvas } from "./canvas";
 import { remotes, SpawnSplash } from "shared/splashes";
+import { BRUSH_DRYING_TIME } from "shared/constants";
 
 const PAINT_LAYER_DEPTH = 0.01;
-const DRYING_DURATION = 30/5;
-
-export const ID_ATTRIBUTE = "CanvasPixelIdent";
+const DRYING_DURATION = BRUSH_DRYING_TIME;
 
 const random = new Random();
 export class CanvasElement {
@@ -20,7 +19,9 @@ export class CanvasElement {
     private defaultBrush: Brush;
     public drying: boolean = false;
     private finishedDryingEvent: BindableEvent<(brush: Brush, defaultBrush: boolean) => void>;
-    public dried: RBXScriptSignal<(brush: Brush, defaultBrush: boolean) => void>;
+    public readonly dried: RBXScriptSignal<(brush: Brush, defaultBrush: boolean) => void>;
+
+    public artist: number = 0;
 
     private baseLayer: Part;
     private paintLayer: Part;
@@ -86,14 +87,12 @@ export class CanvasElement {
         );
 
         this.tweens.connections.push(this.tweens.sizeTween.Completed.Connect((state) => {
-            $print("SizeTween completed!");
             this.drying = false;
             applyPaintToPart(this.baseLayer, this.currentBrush);
             this.hidePaintLayer();
             if (state === Enum.PlaybackState.Completed) this.finishedDryingEvent.Fire(this.currentBrush, this.currentBrush.id === this.defaultBrush.id);
         }))
         this.tweens.connections.push(this.tweens.transparencyTween.Completed.Connect((state) => {
-            $print("TransparencyTween completed!");
             if (state === Enum.PlaybackState.Completed) applyPaintToPart(this.baseLayer, this.currentBrush);
         }))
     }
@@ -183,8 +182,7 @@ export class CanvasElement {
         baseLayer.Name = "BaseLayer";
         baseLayer.Size = size;
         baseLayer.Position = position;
-
-        baseLayer.SetAttribute(ID_ATTRIBUTE, id);
+        baseLayer.SetAttribute(PIXEL_ID_ATTRIBUTE, id);
 
         const paintLayer = new Instance("Part");
         paintLayer.Anchored = true;
@@ -192,12 +190,10 @@ export class CanvasElement {
         paintLayer.Transparency = 1;
         paintLayer.Size = size;
         paintLayer.Position = position;
+        paintLayer.SetAttribute(PIXEL_ID_ATTRIBUTE, id);
 
         this.baseLayer = baseLayer;
         this.paintLayer = paintLayer;
-
-        const clickDetector = new Instance("ClickDetector");
-        clickDetector.Parent = baseLayer;
 
         applyPaintToPart(baseLayer, defaultBrush, false);
 
@@ -206,14 +202,5 @@ export class CanvasElement {
         model.Parent = parent;
 
         this.hidePaintLayer();
-
-        clickDetector.MouseClick.Connect((player) => {
-            if (this.drying) return;
-            // if (canvas.areAnyDrying()) return;
-            const userData = getUserData(player.UserId);
-            const brush = brushes[userData.selectedBrush];
-            $print(userData.selectedBrush);
-            this.paint(brush);
-        })
     }
 }

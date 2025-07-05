@@ -1,13 +1,21 @@
 import { getRightAndDownVectorsFromNormalAcrossPrimaryAxis } from "shared/utils/vector";
 import { CanvasElement } from "./canvasElement";
-import { RunService, Workspace } from "@rbxts/services";
+import { Players, RunService, Workspace } from "@rbxts/services";
 import { $dbg } from "rbxts-transform-debug";
-import { Brush, brushes, remotes, selectableBrushes } from "../../shared/brushes";
-import { testRemotes } from "shared/canvas";
+import { Brush, brushes, remotes as brushRemotes, selectableBrushes } from "../../shared/brushes";
+import { CANVAS_FORWARD, CANVAS_TOP_LEFT, COOLDOWN_ATTRIBUTE, remotes } from "shared/canvas";
+import { getUserData } from "server/userData";
+import { BRUSH_DRYING_TIME } from "shared/constants";
 
 const random = new Random();
 export class Canvas {
     private pixels: CanvasElement[] = [];
+
+    private forwards: Vector3;
+    private right: Vector3;
+    private down: Vector3;
+    private center: Vector3;
+    private size: Vector2;
 
     constructor(pixelsX: number, pixelsY: number, pixelWidth: number, pixelHeight: number, pixelNormal: Vector3, topLeft: Vector3) {
         const model = new Instance("Model");
@@ -15,6 +23,15 @@ export class Canvas {
 
         const length = pixelsX * pixelsY;
         const { right, down } = getRightAndDownVectorsFromNormalAcrossPrimaryAxis(pixelNormal);
+
+        this.forwards = pixelNormal;
+        this.center = topLeft
+            .add(right.mul((pixelWidth * pixelsX) / 2))
+            .add(down.mul((pixelHeight * pixelsY) / 2));
+        this.size = new Vector2(pixelsX * pixelWidth, pixelsY * pixelHeight);
+        this.right = right;
+        this.down = down;
+
         topLeft = topLeft.add(right.mul(pixelWidth/2)).add(down.mul(pixelHeight/2))
 
         $dbg(right);
@@ -39,6 +56,16 @@ export class Canvas {
         }
 
         model.Parent = Workspace;
+    }
+
+    public getUiCoords(): { bottomCenter: Vector3, forwards: Vector3 } {
+        const bottomCenter = this.center
+            .add(this.down.mul(this.size.Y * -0.5))
+            .add(this.down.mul(-0.5));
+        return {
+            bottomCenter,
+            forwards: this.forwards
+        };
     }
 
     public areAnyDrying(): boolean {
@@ -77,14 +104,36 @@ export const canvas = new Canvas(
     5 * RESOLUTION_MULTIPLIER,
     5 / RESOLUTION_MULTIPLIER,
     5 / RESOLUTION_MULTIPLIER,
-    new Vector3(-1, 0, 0), new Vector3(37.425, 24.5 + 2.5, -20 - 2.5)
+    CANVAS_FORWARD,
+    CANVAS_TOP_LEFT
 );
 
-RunService.Heartbeat.Connect(() => {
+RunService.Heartbeat.Connect((delta) => {
     canvas.heartbeat();
+
+    for (const player of Players.GetPlayers()) {
+        let cooldown = player.GetAttribute(COOLDOWN_ATTRIBUTE) as number;
+        if (!typeIs(cooldown, "number")) cooldown = 0;
+        cooldown = math.max(0, cooldown - delta);
+        player.SetAttribute(COOLDOWN_ATTRIBUTE, cooldown);
+    }
 })
 
-testRemotes.paintEntireCanvas.connect((player, brushId, origin) => {
+remotes.paintEntireCanvas.connect((player, brushId, origin) => {
     const brush = brushes[brushId];
     canvas.paintEntireCanvas(brush, origin);
+})
+
+remotes.paintPixel.connect((player, pixelId) => {
+    const cooldown = player.GetAttribute(COOLDOWN_ATTRIBUTE);
+    if (typeIs(cooldown, "number") && cooldown > 0) return;
+    if (pixelId < 0 || pixelId > canvas.getPixels().size() - 1) return;
+    const pixel = canvas.getPixels()[pixelId];
+
+    if (pixel.drying) return;
+    const userData = getUserData(player.UserId);
+    const brush = brushes[userData.selectedBrush];
+    pixel.paint(brush);
+
+    player.SetAttribute(COOLDOWN_ATTRIBUTE, BRUSH_DRYING_TIME);
 })
