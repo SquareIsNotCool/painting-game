@@ -51,6 +51,7 @@ function raycastFromInput(input: InputObject) {
 }
 
 UserInputService.InputBegan.Connect((input, gameProcessed) => {
+    if (gameProcessed) return;
     const pixelId = raycastFromInput(input);
     if (pixelId === undefined) return;
 

@@ -93,7 +93,13 @@ const random = new Random();
 
 let mousePositionLastTick = UserInputService.GetMouseLocation();
 let velocityLastTick = Vector2.zero;
+let lastTick = tick();
 RunService.Heartbeat.Connect(delta => {
+    const now = tick();
+    if (now - lastTick < (1/60)) return;
+    lastTick = now;
+    delta = math.max(delta, 1 / 60);
+
     const mouseLocation = UserInputService.GetMouseLocation();
     const velocity = mouseLocation.sub(mousePositionLastTick).div(delta);
 
@@ -108,7 +114,7 @@ RunService.Heartbeat.Connect(delta => {
     if (
         getCurrentCursor().type === "brush" &&
         (
-            (predictedPosition.sub(mouseLocation).Magnitude > 2000 && velocity.Magnitude <= velocityLastTick.Magnitude) ||
+            (predictedPosition.sub(mouseLocation).Magnitude > 1000 && velocity.Magnitude <= velocityLastTick.Magnitude) ||
             random.NextNumber() < (1.46 * delta)
         )
     ) {
@@ -118,15 +124,18 @@ RunService.Heartbeat.Connect(delta => {
         spawnParticle(
             {
                 position: mouseLocation.add(new Vector2(
-                    random.NextInteger(-4, 4),
-                    random.NextInteger(-4, 4)
+                    random.NextInteger(0, 5),
+                    random.NextInteger(0, 5)
                 )),
                 velocity: velocityLastTick.mul(0.0035).add(new Vector2(0, 1)),
-                label: brush.color.type === "label" ? brush.color.label : "Red"
+                label: brush.color.type === "label" ? brush.color.label : "Red",
+                fadeIn: 1
             },
             (state, delta, screenSize, particle) => {
-                state.velocity = state.velocity.mul(0.98).add(new Vector2(0, 1))
-                state.position = state.position.add(state.velocity);
+                state.velocity = state.velocity.mul(1 - 1.2 * delta).add(new Vector2(0, 60 * delta))
+                state.position = state.position.add(state.velocity.div(1/60).mul(delta));
+
+                state.fadeIn = math.max(0, state.fadeIn - delta * 16);
 
                 if (state.position.Y + 6 >= screenSize.Y || state.position.X - 4 < 0 || state.position.X + 4 >= screenSize.X) {
                     particle.shouldDestroy = true;
@@ -148,6 +157,7 @@ RunService.Heartbeat.Connect(delta => {
                         Position={new UDim2(0, -4, 0, -6)}
                         BackgroundTransparency={1}
                         ImageColor3={getUiColor(state.label)}
+                        ImageTransparency={state.fadeIn}
                     />
                 </frame>
             }

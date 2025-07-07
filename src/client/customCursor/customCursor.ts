@@ -1,4 +1,4 @@
-import { UserInputService } from "@rbxts/services"
+import { ContentProvider, UserInputService } from "@rbxts/services"
 import { RBXAsset } from "shared/types"
 
 interface HiddenCursor {
@@ -23,13 +23,21 @@ export const cursors = {
     default: { type: "default" },
     brush: {
         type: "brush",
-        baseImage: "rbxassetid://72508665471223",
-        colorImage: "rbxassetid://79210094740929"
+        baseImage: "rbxassetid://122545631716561",
+        colorImage: "rbxassetid://125528513610708"
     }
 } satisfies Record<string, Cursor>
 
 const cursorChangedEvent = new Instance("BindableEvent") as BindableEvent<(cursor: Cursor) => void>;
 export const cursorChanged = cursorChangedEvent.Event;
+
+const preloadIds: RBXAsset[] = [];
+for (const [name, cursor] of pairs(cursors)) {
+    if (cursor.type === "brush") {
+        preloadIds.push(cursor.baseImage, cursor.colorImage);
+    }
+}
+ContentProvider.PreloadAsync(preloadIds);
 
 let currentCursor: Cursor = cursors.default;
 export function getCurrentCursor() {
